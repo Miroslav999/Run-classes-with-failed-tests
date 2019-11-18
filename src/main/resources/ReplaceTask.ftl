@@ -1,0 +1,1 @@
+[@ww.textfield labelKey="Test list file" name="testnamefile" required='true'/]
