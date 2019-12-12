@@ -19,7 +19,7 @@
 		<skipIfFailed>false</skipIfFailed>
 	</buildProcessorServer>
 	
-	<preJobAction key="myPreJobAction" class="atlas.plugin.replacetestfile.MyPreJobAction">
+	<preJobAction key="PreJobTask" class="atlas.plugin.replacetestfile.PreJobTask">
         <description>Modifies the Job before it is queued</description>
     </preJobAction>
 	

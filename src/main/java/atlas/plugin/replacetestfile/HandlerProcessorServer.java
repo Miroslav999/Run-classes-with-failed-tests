@@ -1,6 +1,11 @@
 package atlas.plugin.replacetestfile;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
@@ -9,13 +14,16 @@ import org.slf4j.LoggerFactory;
 
 import com.atlassian.bamboo.build.CustomBuildProcessorServer;
 import com.atlassian.bamboo.builder.BuildState;
+import com.atlassian.bamboo.results.tests.TestResults;
 import com.atlassian.bamboo.task.TaskResult;
+import com.atlassian.bamboo.task.runtime.RuntimeTaskDefinition;
 import com.atlassian.bamboo.v2.build.BuildContext;
 
 public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(HandlerProcessorServer.class);
+    public static final String PATTERN = "\\(.*?\\)";
     public static final String TASK_KEY = "prom.atlas.plugins.rerun-failed-tests:replace-testname-file";
     private BuildContext buildContext;
     private Storage storage;
@@ -35,43 +43,42 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         String currentPlanName = buildContext.getPlanName();
 
-        if (buildContext.getCurrentResult().getBuildState().equals(BuildState.SUCCESS)) {
+        if (buildContext.getCurrentResult().getBuildState()
+                .equals(BuildState.SUCCESS)) {
+            
             storage.getPlans().remove(currentPlanName);
+            
             LOGGER.info("Replace plugin: currentPlanName was removed "
                     + currentPlanName);
             return buildContext;
         }
 
-        Job job = storage.getPlans().get(currentPlanName);
-
-        if (job == null) {
-            createJob(currentPlanName);
-        } else {
-            saveJob(job);
+        Optional<RuntimeTaskDefinition> taskDefinition = getTaskDefinition(buildContext);
+        
+        if (!taskDefinition.isPresent()){
+            LOGGER.info("Replace plugin: RuntimeTaskDefinition is empty ");
+            return buildContext;
         }
+           
+        Job job = (Job) taskDefinition.get().getRuntimeData().get(currentPlanName);
 
-        return buildContext;
-    }
+        List<String> classesWithFailedTests = getClasses(buildContext.getBuildResult().getFailedTestResults());
+        
+        List<String> classesWithSuccessTests = getClasses(buildContext.getBuildResult().getSuccessfulTestResults());
+       
+        List<String> lastRunningClasses = new ArrayList <>(job.getResults().get(job.getNumberOfRetries()));
 
-    private void createJob(String currentPlanName) {
-        Job job = new Job(buildContext.getBuildNumber());
-        job.addResults(buildContext.getBuildResult().getFailedTestResults());
+        lastRunningClasses.removeAll(classesWithSuccessTests);
+        
+        lastRunningClasses.addAll(classesWithFailedTests);
+        
+        job.addResults(lastRunningClasses);
+        
+        storage.getPlans().remove(currentPlanName);
+        
         storage.getPlans().put(currentPlanName, job);
-        LOGGER.info("Replace plugin: job was created. BuildNumber : "
-                + buildContext.getBuildNumber() + " size failed : "
-                + buildContext.getBuildResult().getFailedTestResults().size());
-    }
-
-    private void saveJob(Job job) {
-        LOGGER.info("Replace plugin: job.getBuildNumber()"
-                + job.getBuildNumber() + " size failed : "
-                + buildContext.getBuildResult().getFailedTestResults().size());
-        if (job.getBuildNumber() != buildContext.getBuildNumber()) {
-            job.getResults().clear();
-            job.setBuildNumber(buildContext.getBuildNumber());
-        } else {
-            job.addResults(buildContext.getBuildResult().getFailedTestResults());
-        }
+        
+        return buildContext;
     }
 
     @Override
@@ -87,6 +94,41 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
                 .stream()
                 .filter(task -> task.getTaskIdentifier().getPluginKey()
                         .equals(TASK_KEY)).findFirst();
+    }
+    
+    @Nullable
+    private Optional<RuntimeTaskDefinition> getTaskDefinition(BuildContext buildContext){
+        return buildContext
+                .getRuntimeTaskDefinitions()
+                .stream()
+                .filter(taskDefinition -> taskDefinition.getPluginKey().equals(
+                        HandlerProcessorServer.TASK_KEY)).findFirst();
+    }
+    
+    private List<String> getClasses(Collection<TestResults> tests){
+        List<String> classes = new ArrayList<>();
+        tests.stream().forEach(result -> {
+            String className = getClassName(result.getActualMethodName());
+            if (classes.indexOf(className) == -1){
+                classes.add(className);
+            }
+        });
+        return classes;
+    }
+    
+    private String getClassName(String str) {
+        return getStringByTemplate(PATTERN, str);
+    }
+
+    @Nullable
+    private String getStringByTemplate(String pattern, String str) {
+        Pattern p = Pattern.compile(pattern);
+        Matcher m = p.matcher(str);
+        if (m.find()) {
+            return m.group().subSequence(1, m.group().length() - 1).toString();
+        } else {
+            return null;
+        }
     }
 
 }

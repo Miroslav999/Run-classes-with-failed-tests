@@ -4,11 +4,11 @@ import com.atlassian.bamboo.chains.StageExecution;
 import com.atlassian.bamboo.chains.plugins.PreJobAction;
 import com.atlassian.bamboo.v2.build.BuildContext;
 
-public class MyPreJobAction implements PreJobAction{
+public class PreJobTask implements PreJobAction{
     
     private Storage storage;
     
-    public MyPreJobAction(Storage storage) {
+    public PreJobTask(Storage storage) {
         this.storage = storage;
     }
 

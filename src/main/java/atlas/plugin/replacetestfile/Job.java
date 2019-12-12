@@ -1,17 +1,15 @@
 package atlas.plugin.replacetestfile;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-
-import com.atlassian.bamboo.results.tests.TestResults;
 import com.atlassian.bamboo.serialization.WhitelistedSerializable;
 
 public class Job implements WhitelistedSerializable{
 
     private static final long serialVersionUID = 4477444309360773529L;
     private int buildNumber;
-	private List<Collection<TestResults>> results = new ArrayList<>();
+	private List<List<String>> results = new ArrayList<>();
+	private int numberOfRetries = -1;
 	
 	public Job(){}
 	
@@ -19,10 +17,10 @@ public class Job implements WhitelistedSerializable{
 		this.buildNumber = buildNumber;
 	}
 
-	public List<Collection<TestResults>> getResults() {
+	public List<List<String>> getResults() {
 		return results;
 	}
-	public void addResults(Collection<TestResults> results) {
+	public void addResults(List<String> results) {
 		this.results.add(results);
 	}
 	public int getBuildNumber() {
@@ -32,4 +30,13 @@ public class Job implements WhitelistedSerializable{
 	public void setBuildNumber(int buildNumber) {
 		this.buildNumber = buildNumber;
 	}
+
+    public void increaseNumberOfRetries() {
+        this.numberOfRetries++;
+    }
+
+    public int getNumberOfRetries() {
+        return numberOfRetries;
+    }
+	
 }

@@ -4,19 +4,14 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.annotation.Nullable;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.atlassian.bamboo.results.tests.TestResults;
 import com.atlassian.bamboo.task.TaskContext;
 import com.atlassian.bamboo.task.TaskException;
 import com.atlassian.bamboo.task.TaskResult;
@@ -27,7 +22,7 @@ import com.google.common.io.Files;
 
 public class BuildFailedTestListTask implements TaskType {
 
-    public static final String PATTERN = "\\(.*?\\)";
+    
     private static final Logger LOGGER = LoggerFactory
             .getLogger(BuildFailedTestListTask.class);
 
@@ -36,113 +31,69 @@ public class BuildFailedTestListTask implements TaskType {
     public TaskResult execute(@NotNull final TaskContext taskContext)
             throws TaskException {
 
-        Job job = (Job) taskContext.getRuntimeTaskData().get(
+        String fileNameWithDefaultTestClassesList = taskContext
+                .getConfigurationMap().get(
+                        BuildFailedTestListTaskConfigurator.testNameFileKey);
+
+        Job currentJob = (Job) taskContext.getRuntimeTaskData().get(
                 taskContext.getBuildContext().getPlanName());
 
-        if (job == null || job.getResults() == null) {
-            LOGGER.info("Replace plugin: job or results are null");
+        if (currentJob == null
+                || currentJob.getBuildNumber() != taskContext.getBuildContext()
+                        .getBuildNumber()) {
+            Job newJob = new Job(taskContext.getBuildContext().getBuildNumber());
+
+            readFileAndSaveJob(taskContext, newJob, fileNameWithDefaultTestClassesList);
+            
             return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
 
-        if (taskContext.getBuildContext().getBuildNumber() == job
-                .getBuildNumber() && job.getResults().size() > 0) {
-
-            String fileName = taskContext.getConfigurationMap().get(
-                    BuildFailedTestListTaskConfigurator.testNameFileKey);
-
-            LOGGER.info("Replace plugin: taskContext.getRootDirectory().getAbsolutePath() = "
-                    + taskContext.getRootDirectory().getAbsolutePath()
-                    + " | taskContext.getRootDirectory().getPath()"
-                    + taskContext.getRootDirectory().getPath()
-                    + " | taskContext.getWorkingDirectory().getAbsolutePath()"
-                    + taskContext.getWorkingDirectory().getAbsolutePath());
-
-            String newCurrentFileName = getFileNameWithIndex(fileName, 0);
-
-            if (newCurrentFileName == null) {
-                LOGGER.info("Replace plugin: newCurrentFileName is null "
-                        + fileName);
-                return TaskResultBuilder.newBuilder(taskContext).success()
-                        .build();
-            }
-
-            copyFile(taskContext.getWorkingDirectory().getAbsolutePath()
-                    + "/" + fileName, taskContext.getWorkingDirectory()
-                    .getAbsolutePath() + "/" + newCurrentFileName);
-
-            createFilesByHistory(taskContext.getWorkingDirectory()
-                    .getAbsolutePath(), fileName, job.getResults());
+        if (currentJob.getResults().size() == 0){
+            return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
+        
+        for (int i = 0; i < currentJob.getResults().size(); i++){
+            
+            if (i == currentJob.getResults().size()-1){
+                writeToFile(taskContext.getWorkingDirectory()
+                        .getAbsolutePath(), "TestClasses.txt", currentJob.getResults().get(i));
+                break;
+            }
+            
+            if (i == 0){
+                writeToFile(taskContext.getWorkingDirectory()
+                        .getAbsolutePath(), "TestClasses_run.txt", currentJob.getResults().get(i));
+                continue;
+            }
+            
+            writeToFile(taskContext.getWorkingDirectory()
+                    .getAbsolutePath(), "TestClasses_rerun_" + i + ".txt", currentJob.getResults().get(i));
+            
+           
+            
+        }
+        
+        readFileAndSaveJob(taskContext, currentJob, fileNameWithDefaultTestClassesList);
 
         return TaskResultBuilder.newBuilder(taskContext).success().build();
     }
 
-    private void createFilesByHistory(String root, String fileName,
-            List<Collection<TestResults>> failedTest) {
+    
+    private void readFileAndSaveJob(TaskContext taskContext, Job job, String fileNameWithDefaultTestClassesList){
+        
+        List<String> currentTestClasses = getTestClassesList(new File(
+                taskContext.getWorkingDirectory().getAbsolutePath() + "/"
+                        + fileNameWithDefaultTestClassesList));
 
-        List<String> listOfTestClasses = new ArrayList<>();
-        try {
-            failedTest
-                    .stream()
-                    .forEach(
-                            collection -> {
-                                StringBuilder classes = new StringBuilder();
-                                collection
-                                        .stream()
-                                        .forEach(
-                                                testResult -> {
-                                                    String className = getClassName(testResult
-                                                            .getActualMethodName());
+        job.addResults(currentTestClasses);
 
-                                                    if (className == null) {
-                                                        LOGGER.info("Replace plugin: className is null = "
-                                                                + testResult
-                                                                        .getActualMethodName());
-                                                        throw new NullPointerException();
-                                                    }
+        job.increaseNumberOfRetries();
+        
+        taskContext.getRuntimeTaskData().put(
+                taskContext.getBuildContext().getPlanName(), job);
 
-                                                    if (classes
-                                                            .indexOf(className) == -1) {
-                                                        classes.append(className);
-                                                        classes.append(System.getProperty("line.separator"));
-                                                        LOGGER.info("Replace plugin: className = "
-                                                                + className
-                                                                + ". Actual name = "
-                                                                + testResult
-                                                                        .getActualMethodName());
-                                                    }
-                                                });
-                                listOfTestClasses.add(classes.toString());
-                            });
-
-            for (int i = 0; i < listOfTestClasses.size(); i++) {
-                String newFileName = null;
-                if (i < listOfTestClasses.size() - 1) {
-                    newFileName = getFileNameWithIndex(fileName, i + 1);
-                } else {
-                    newFileName = fileName;
-                }
-
-                LOGGER.info("Replace plugin: path = " + root + "/"
-                        + newFileName);
-                writeToFile(root, newFileName, listOfTestClasses.get(i));
-            }
-
-        } catch (NullPointerException e) {
-            return;
-        }
-
-        LOGGER.info("Replace plugin: replaceFile -> failedTest = "
-                + failedTest.toString());
-
-    }
-
-    private String getFileNameWithIndex(String fileName, int index) {
-        Optional<String> ext = getExtensionByString(fileName);
-        if (ext.isPresent()) {
-            return fileName.replace("." + ext.get(), index + "." + ext.get());
-        }
-        return null;
+        LOGGER.info("Replace plugin: job or results are null "
+                + currentTestClasses.toString());
     }
 
     public Optional<String> getExtensionByString(String filename) {
@@ -150,20 +101,13 @@ public class BuildFailedTestListTask implements TaskType {
                 .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
 
-    private void copyFile(String fullPathFrom, String fullPathTo) {
-        try {
-            LOGGER.info("Replace plugin: coping file. FullPathFrom: "
-                    + fullPathFrom + " | FullPathTo: " + fullPathTo);
-            Files.copy(new File(fullPathFrom), new File(fullPathTo));
-        } catch (IOException e) {
-            LOGGER.info("Replace plugin: coping file finished with error + "
-                    + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void writeToFile(String root, String fileName, String content) {
-
+    private void writeToFile(String root, String fileName, List<String> list) {
+        
+        String content = list.stream().collect(Collectors.joining(System.lineSeparator()));
+        
+        LOGGER.info("Replace plugin: content "
+                + content);
+        
         BufferedWriter writer;
         try {
             writer = new BufferedWriter(new FileWriter(root + "/" + fileName));
@@ -171,21 +115,25 @@ public class BuildFailedTestListTask implements TaskType {
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
+            LOGGER.error("Replace plugin: while writting to file has error "
+                    + e.getMessage());
         }
     }
 
-    private String getClassName(String str) {
-        return getStringByTemplate(PATTERN, str);
-    }
-
-    @Nullable
-    private String getStringByTemplate(String pattern, String str) {
-        Pattern p = Pattern.compile(pattern);
-        Matcher m = p.matcher(str);
-        if (m.find()) {
-            return m.group().subSequence(1, m.group().length() - 1).toString();
-        } else {
-            return null;
+    private List<String> getTestClassesList(File testClassesFile) {
+        if (!testClassesFile.exists()) {
+            LOGGER.info("Replace plugin: " + testClassesFile.getName()
+                    + " not exist");
         }
+        List<String> classes = null;
+        try {
+            classes = Files
+                    .readLines(testClassesFile, Charset.defaultCharset());
+        } catch (IOException e) {
+            LOGGER.error("Replace plugin: appeared error while reading the file - "
+                    + e.getMessage());
+        }
+
+        return classes;
     }
 }
