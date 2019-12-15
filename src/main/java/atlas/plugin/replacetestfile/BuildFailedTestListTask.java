@@ -41,6 +41,9 @@ public class BuildFailedTestListTask implements TaskType {
         if (currentJob == null
                 || currentJob.getBuildNumber() != taskContext.getBuildContext()
                         .getBuildNumber()) {
+            
+            LOGGER.info("Replace plugin: readFileAndSaveJob_run " );
+            
             Job newJob = new Job(taskContext.getBuildContext().getBuildNumber());
 
             readFileAndSaveJob(taskContext, newJob, fileNameWithDefaultTestClassesList);
@@ -68,13 +71,13 @@ public class BuildFailedTestListTask implements TaskType {
             
             writeToFile(taskContext.getWorkingDirectory()
                     .getAbsolutePath(), "TestClasses_rerun_" + i + ".txt", currentJob.getResults().get(i));
-            
-           
-            
+
         }
         
+        LOGGER.info("Replace plugin: readFileAndSaveJob_rerun " );
+        
         readFileAndSaveJob(taskContext, currentJob, fileNameWithDefaultTestClassesList);
-
+        
         return TaskResultBuilder.newBuilder(taskContext).success().build();
     }
 
@@ -92,8 +95,9 @@ public class BuildFailedTestListTask implements TaskType {
         taskContext.getRuntimeTaskData().put(
                 taskContext.getBuildContext().getPlanName(), job);
 
-        LOGGER.info("Replace plugin: job or results are null "
-                + currentTestClasses.toString());
+        LOGGER.info("Replace plugin: readFileAndSaveJob| getPlanName: " + taskContext.getBuildContext().getPlanName() + 
+                " currentTestClasses : "
+                + currentTestClasses.toString() );
     }
 
     public Optional<String> getExtensionByString(String filename) {

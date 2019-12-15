@@ -62,6 +62,8 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
            
         Job job = (Job) taskDefinition.get().getRuntimeData().get(currentPlanName);
 
+        LOGGER.info("Replace plugin: got job on server : " + job.getBuildNumber() + " / " + job.getResults().toString());
+        
         List<String> classesWithFailedTests = getClasses(buildContext.getBuildResult().getFailedTestResults());
         
         List<String> classesWithSuccessTests = getClasses(buildContext.getBuildResult().getSuccessfulTestResults());
@@ -70,6 +72,8 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         lastRunningClasses.removeAll(classesWithSuccessTests);
         
+        lastRunningClasses.removeAll(classesWithFailedTests);
+        
         lastRunningClasses.addAll(classesWithFailedTests);
         
         job.addResults(lastRunningClasses);
@@ -77,6 +81,11 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
         storage.getPlans().remove(currentPlanName);
         
         storage.getPlans().put(currentPlanName, job);
+        
+        LOGGER.info("Replace plugin: classesWithFailedTests : " + classesWithFailedTests.toString() + "\n " + "classesWithSuccessTests : + "
+                + classesWithSuccessTests.toString() + "\n " + 
+                "lastRunningClasses : " + lastRunningClasses.toString());
+
         
         return buildContext;
     }
