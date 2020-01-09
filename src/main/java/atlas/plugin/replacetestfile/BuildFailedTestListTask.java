@@ -42,7 +42,7 @@ public class BuildFailedTestListTask implements TaskType {
                 || currentJob.getBuildNumber() != taskContext.getBuildContext()
                         .getBuildNumber()) {
             
-            LOGGER.info("Replace plugin: readFileAndSaveJob_run " );
+            LOGGER.info("Replace plugin: readFileAndSaveJob_run - new job " );
             
             Job newJob = new Job(taskContext.getBuildContext().getBuildNumber());
 
@@ -73,9 +73,7 @@ public class BuildFailedTestListTask implements TaskType {
                     .getAbsolutePath(), "TestClasses_rerun_" + i + ".txt", currentJob.getResults().get(i));
 
         }
-        
-        LOGGER.info("Replace plugin: readFileAndSaveJob_rerun " );
-        
+                
         readFileAndSaveJob(taskContext, currentJob, fileNameWithDefaultTestClassesList);
         
         return TaskResultBuilder.newBuilder(taskContext).success().build();

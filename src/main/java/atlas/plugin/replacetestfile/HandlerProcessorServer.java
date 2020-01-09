@@ -34,7 +34,7 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
     @Override
     public BuildContext call() throws InterruptedException, Exception {
-
+        LOGGER.info("Replace plugin: method call");
         Optional<TaskResult> task = getTaskExporter(buildContext);
 
         if (!task.isPresent()) {
@@ -81,12 +81,11 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
         storage.getPlans().remove(currentPlanName);
         
         storage.getPlans().put(currentPlanName, job);
-        
+       
         LOGGER.info("Replace plugin: classesWithFailedTests : " + classesWithFailedTests.toString() + "\n " + "classesWithSuccessTests : + "
                 + classesWithSuccessTests.toString() + "\n " + 
                 "lastRunningClasses : " + lastRunningClasses.toString());
 
-        
         return buildContext;
     }
 

@@ -27,8 +27,10 @@ public class PreJobTask implements PreJobAction{
                 .findFirst()
                 .ifPresent(task -> {
                     Job job = storage.getPlans().get(buildContext.getPlanName());
-                    task.getRuntimeData().put(buildContext.getPlanName(), job);
-                    LOGGER.info("Replace plugin: PreJobTask  -> " +  buildContext.getPlanName() + " job: " + job.getResults().size());
+                    if (job != null){
+                        task.getRuntimeData().put(buildContext.getPlanName(), job);
+                        LOGGER.info("Replace plugin: PreJobTask  -> " +  buildContext.getPlanName() + " job: " + job.getResults().size());
+                    }
                 });
     }
 
