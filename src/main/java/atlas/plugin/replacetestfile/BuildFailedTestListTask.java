@@ -22,7 +22,6 @@ import com.google.common.io.Files;
 
 public class BuildFailedTestListTask implements TaskType {
 
-    
     private static final Logger LOGGER = LoggerFactory
             .getLogger(BuildFailedTestListTask.class);
 
@@ -41,61 +40,71 @@ public class BuildFailedTestListTask implements TaskType {
         if (currentJob == null
                 || currentJob.getBuildNumber() != taskContext.getBuildContext()
                         .getBuildNumber()) {
-            
-            LOGGER.info("Replace plugin: readFileAndSaveJob_run - new job " );
-            
-            Job newJob = new Job(taskContext.getBuildContext().getBuildNumber());
 
-            readFileAndSaveJob(taskContext, newJob, fileNameWithDefaultTestClassesList);
-            
+            LOGGER.info("Replace plugin: readFileAndSaveJob_run - new job ");
+
+            // Job newJob = new
+            // Job(taskContext.getBuildContext().getBuildNumber());
+
+            readFileAndSaveContent(taskContext, fileNameWithDefaultTestClassesList);
+
             return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
 
-        if (currentJob.getResults().size() == 0){
+        if (currentJob.getResults().size() == 0) {
             return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
-        
-        for (int i = 0; i < currentJob.getResults().size(); i++){
-            
-            if (i == currentJob.getResults().size()-1){
-                writeToFile(taskContext.getWorkingDirectory()
-                        .getAbsolutePath(), "TestClasses.txt", currentJob.getResults().get(i));
+
+        for (int i = 0; i < currentJob.getResults().size(); i++) {
+
+            if (i == currentJob.getResults().size() - 1) {
+                writeToFile(
+                        taskContext.getWorkingDirectory().getAbsolutePath(),
+                        "TestClasses.txt", currentJob.getResults().get(i));
                 break;
             }
-            
-            if (i == 0){
-                writeToFile(taskContext.getWorkingDirectory()
-                        .getAbsolutePath(), "TestClasses_run.txt", currentJob.getResults().get(i));
+
+            if (i == 0) {
+                writeToFile(
+                        taskContext.getWorkingDirectory().getAbsolutePath(),
+                        "TestClasses_run.txt", currentJob.getResults().get(i));
                 continue;
             }
-            
-            writeToFile(taskContext.getWorkingDirectory()
-                    .getAbsolutePath(), "TestClasses_rerun_" + i + ".txt", currentJob.getResults().get(i));
+
+            writeToFile(taskContext.getWorkingDirectory().getAbsolutePath(),
+                    "TestClasses_rerun_" + i + ".txt", currentJob.getResults()
+                            .get(i));
 
         }
-                
-        readFileAndSaveJob(taskContext, currentJob, fileNameWithDefaultTestClassesList);
-        
+
+//        readFileAndSaveJob(taskContext, fileNameWithDefaultTestClassesList);
+
         return TaskResultBuilder.newBuilder(taskContext).success().build();
     }
 
-    
-    private void readFileAndSaveJob(TaskContext taskContext, Job job, String fileNameWithDefaultTestClassesList){
-        
+    private void readFileAndSaveContent(TaskContext taskContext,
+            String fileNameWithDefaultTestClassesList) {
+
         List<String> currentTestClasses = getTestClassesList(new File(
                 taskContext.getWorkingDirectory().getAbsolutePath() + "/"
                         + fileNameWithDefaultTestClassesList));
 
-        job.addResults(currentTestClasses);
+        // job.addResults(currentTestClasses);
+        //
+        // job.increaseNumberOfRetries();
 
-        job.increaseNumberOfRetries();
-        
-        taskContext.getRuntimeTaskData().put(
-                taskContext.getBuildContext().getPlanName(), job);
+        String classes = String.join(HandlerProcessorServer.DELIM,
+                currentTestClasses);
 
-        LOGGER.info("Replace plugin: readFileAndSaveJob| getPlanName: " + taskContext.getBuildContext().getPlanName() + 
-                " currentTestClasses : "
-                + currentTestClasses.toString() );
+        taskContext.getRuntimeTaskContext().put(
+                taskContext.getBuildContext().getPlanName(), classes);
+
+        // taskContext.getRuntimeTaskData().put(
+        // taskContext.getBuildContext().getPlanName(), job);
+
+        LOGGER.info("Replace plugin: readFileAndSaveJob| getPlanName: "
+                + taskContext.getBuildContext().getPlanName()
+                + " currentTestClasses : " + currentTestClasses.toString());
     }
 
     public Optional<String> getExtensionByString(String filename) {
@@ -104,12 +113,12 @@ public class BuildFailedTestListTask implements TaskType {
     }
 
     private void writeToFile(String root, String fileName, List<String> list) {
-        
-        String content = list.stream().collect(Collectors.joining(System.lineSeparator()));
-        
-        LOGGER.info("Replace plugin: content "
-                + content);
-        
+
+        String content = list.stream().collect(
+                Collectors.joining(System.lineSeparator()));
+
+        LOGGER.info("Replace plugin: content " + content);
+
         BufferedWriter writer;
         try {
             writer = new BufferedWriter(new FileWriter(root + "/" + fileName));

@@ -7,16 +7,12 @@ import com.atlassian.bamboo.serialization.WhitelistedSerializable;
 public class Job implements WhitelistedSerializable{
 
     private static final long serialVersionUID = 4477444309360773529L;
-    private int buildNumber;
+    private int buildNumber = 0;
 	private List<List<String>> results = new ArrayList<>();
-	private int numberOfRetries = -1;
+	private int numberOfRetries = 0;
 	
 	public Job(){}
 	
-	public Job(int buildNumber) {
-		this.buildNumber = buildNumber;
-	}
-
 	public List<List<String>> getResults() {
 		return results;
 	}
@@ -37,6 +33,10 @@ public class Job implements WhitelistedSerializable{
 
     public int getNumberOfRetries() {
         return numberOfRetries;
+    }
+    
+    public void resetNumberOfRetries(){
+        numberOfRetries = 0;
     }
 	
 }
