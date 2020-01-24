@@ -1,9 +1,9 @@
 package atlas.plugin.replacetestfile;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,27 +38,14 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         TaskResult task = getTaskExporter(buildContext);
 
-        LOGGER.info("Replace plugin: method call: task " + task);
-
-//        buildContext
-//                .getBuildResult()
-//                .getTaskResults()
-//                .stream()
-//                .forEach(
-//                        taskResult -> LOGGER
-//                                .info("Replace plugin:"
-//                                        + taskResult.getTaskIdentifier()
-//                                                .getPluginKey()));
-
         if (task == null) {
-            LOGGER.info("Replace plugin: task is null");
             return buildContext;
         }
 
         String currentPlanName = buildContext.getPlanName();
 
-        LOGGER.info("Replace plugin: currentPlanName: " + currentPlanName );
-        
+        LOGGER.info("Replace plugin: currentPlanName: " + currentPlanName);
+
         if (buildContext.getCurrentResult().getBuildState()
                 .equals(BuildState.SUCCESS)) {
 
@@ -70,77 +57,94 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
         }
 
         Job job = getJob();
-        
-        List<String> lastRunningClasses = getLastRunningClasses(job);
-        
-        List<String> newListRunningClasses = new ArrayList<>(lastRunningClasses);
-        
-        List<String> classesWithFailedTests = getClasses(buildContext
+
+        Set<String> lastRunningClasses = getLastRunningClasses(job);
+
+        Set<String> newListRunningClasses = new HashSet<String>(
+                lastRunningClasses);
+
+        Set<String> classesWithFailedTests = getClasses(buildContext
                 .getBuildResult().getFailedTestResults());
 
-        List<String> classesWithSuccessTests = getClasses(buildContext
+        if (classesWithFailedTests == null) {
+            job.increaseNumberOfRetries();
+            job.addResults(job.getResults().get(job.getNumberOfRetries()));
+            LOGGER.info("Replace plugin: classesWithFailedTests is null ");
+            return buildContext;
+        }
+
+        Set<String> classesWithSuccessTests = getClasses(buildContext
                 .getBuildResult().getSuccessfulTestResults());
 
-        newListRunningClasses.removeAll(classesWithSuccessTests);
+        Set<String> classesWithIgnoreTests = getClasses(buildContext
+                .getBuildResult().getSkippedTestResults());
 
-        newListRunningClasses.removeAll(classesWithFailedTests);
+        if (classesWithSuccessTests != null) {
+            newListRunningClasses.removeAll(classesWithSuccessTests);
+        }
 
+        if (classesWithIgnoreTests != null) {
+            newListRunningClasses.removeAll(classesWithIgnoreTests);
+        }
+        
         newListRunningClasses.addAll(classesWithFailedTests);
 
         job.addResults(newListRunningClasses);
-        
+
         job.increaseNumberOfRetries();
 
         LOGGER.info("Replace plugin: classesWithFailedTests : "
                 + classesWithFailedTests.toString() + "\n"
                 + "classesWithSuccessTests : + "
                 + classesWithSuccessTests.toString() + "\n"
-                + "lastRunningClasses : " + lastRunningClasses.toString() + "\n"
-                + "newListRunningClasses : " + newListRunningClasses.toString());
+                + "lastRunningClasses : " + lastRunningClasses.toString()
+                + "\n" + "newListRunningClasses : "
+                + newListRunningClasses.toString());
 
         return buildContext;
     }
-    
-    private List<String> getLastRunningClasses(Job job){
-        
-        if (job.getBuildNumber() != buildContext.getBuildNumber()){
+
+    private Set<String> getLastRunningClasses(Job job) {
+
+        if (job.getBuildNumber() != buildContext.getBuildNumber()) {
             RuntimeTaskDefinition taskDefinition = getTaskDefinition(buildContext);
 
             if (taskDefinition == null) {
                 LOGGER.info("Replace plugin: RuntimeTaskDefinition is empty ");
                 return null;
             }
-            String classes = taskDefinition.getRuntimeContext().get(buildContext.getPlanName());
-     
+            String classes = taskDefinition.getRuntimeContext().get(
+                    buildContext.getPlanName());
+
             LOGGER.info("Replace plugin: content on server : " + classes);
-            
+
             job.getResults().clear();
-            
+
             job.setBuildNumber(buildContext.getBuildNumber());
-            
+
             job.resetNumberOfRetries();
-            
-            List<String> lastRunningClasses = new ArrayList<>();
-            
+
+            Set<String> lastRunningClasses = new HashSet<String>();
+
             lastRunningClasses.addAll(Arrays.asList(classes.split(DELIM)));
-            
+
             job.getResults().add(lastRunningClasses);
-            
+
             return job.getResults().get(0);
         }
-        
+
         return job.getResults().get(job.getNumberOfRetries());
     }
 
-    private Job getJob(){
+    private Job getJob() {
         Job job = storage.getPlans().get(buildContext.getPlanName());
-        if (job == null){
+        if (job == null) {
             job = new Job();
             storage.getPlans().put(buildContext.getPlanName(), job);
         }
         return job;
     }
-    
+
     @Override
     public void init(BuildContext arg0) {
         this.buildContext = arg0;
@@ -161,19 +165,22 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
         return buildContext
                 .getRuntimeTaskDefinitions()
                 .stream()
-                .filter(taskDefinition -> taskDefinition.getPluginKey()
-                        .equals(TASK_KEY)).findFirst().orElse(null);
+                .filter(taskDefinition -> taskDefinition.getPluginKey().equals(
+                        TASK_KEY)).findFirst().orElse(null);
     }
 
-    private List<String> getClasses(Collection<TestResults> tests) {
-        List<String> classes = new ArrayList<>();
-        tests.stream().forEach(result -> {
-            //String className = getClassName(result.getActualMethodName());
-            String className = result.getActualMethodName();
-            if (classes.indexOf(className) == -1) {
-                classes.add(className);
+    @Nullable
+    private Set<String> getClasses(Collection<TestResults> tests) {
+        Set<String> classes = new HashSet<String>();
+
+        for (TestResults testResults : tests) {
+            String className = getClassName(testResults.getActualMethodName());
+            if (className == null) {
+                return null;
             }
-        });
+            classes.add(className);
+        }
+
         return classes;
     }
 

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -112,7 +113,7 @@ public class BuildFailedTestListTask implements TaskType {
                 .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
 
-    private void writeToFile(String root, String fileName, List<String> list) {
+    private void writeToFile(String root, String fileName, Set<String> list) {
 
         String content = list.stream().collect(
                 Collectors.joining(System.lineSeparator()));
