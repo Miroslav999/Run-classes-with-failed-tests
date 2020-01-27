@@ -65,14 +65,7 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         Set<String> classesWithFailedTests = getClasses(buildContext
                 .getBuildResult().getFailedTestResults());
-
-        if (classesWithFailedTests == null) {
-            job.increaseNumberOfRetries();
-            job.addResults(job.getResults().get(job.getNumberOfRetries()));
-            LOGGER.info("Replace plugin: classesWithFailedTests is null ");
-            return buildContext;
-        }
-
+        
         Set<String> classesWithSuccessTests = getClasses(buildContext
                 .getBuildResult().getSuccessfulTestResults());
 
@@ -87,7 +80,9 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
             newListRunningClasses.removeAll(classesWithIgnoreTests);
         }
         
-        newListRunningClasses.addAll(classesWithFailedTests);
+        if (classesWithFailedTests != null) {
+            newListRunningClasses.addAll(classesWithFailedTests);
+        }
 
         job.addResults(newListRunningClasses);
 
