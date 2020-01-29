@@ -42,10 +42,7 @@ public class BuildFailedTestListTask implements TaskType {
                         .getBuildNumber()) {
 
             LOGGER.info("Replace plugin: readFileAndSaveJob_run - new job ");
-
-            // Job newJob = new
-            // Job(taskContext.getBuildContext().getBuildNumber());
-
+            
             readFileAndSaveContent(taskContext, fileNameWithDefaultTestClassesList);
 
             return TaskResultBuilder.newBuilder(taskContext).success().build();
@@ -77,7 +74,6 @@ public class BuildFailedTestListTask implements TaskType {
 
         }
 
-//        readFileAndSaveJob(taskContext, fileNameWithDefaultTestClassesList);
 
         return TaskResultBuilder.newBuilder(taskContext).success().build();
     }
@@ -89,18 +85,12 @@ public class BuildFailedTestListTask implements TaskType {
                 taskContext.getWorkingDirectory().getAbsolutePath() + "/"
                         + fileNameWithDefaultTestClassesList));
 
-        // job.addResults(currentTestClasses);
-        //
-        // job.increaseNumberOfRetries();
 
         String classes = String.join(HandlerProcessorServer.DELIM,
                 currentTestClasses);
 
         taskContext.getRuntimeTaskContext().put(
                 taskContext.getBuildContext().getPlanName(), classes);
-
-        // taskContext.getRuntimeTaskData().put(
-        // taskContext.getBuildContext().getPlanName(), job);
 
         LOGGER.info("Replace plugin: readFileAndSaveJob| getPlanName: "
                 + taskContext.getBuildContext().getPlanName()

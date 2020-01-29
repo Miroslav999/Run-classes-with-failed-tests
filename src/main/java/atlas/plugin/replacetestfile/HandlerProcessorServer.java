@@ -38,20 +38,7 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         TaskResult task = getTaskExporter(buildContext);
 
-        LOGGER.info("Replace plugin: method call: task " + task);
-
-//        buildContext
-//                .getBuildResult()
-//                .getTaskResults()
-//                .stream()
-//                .forEach(
-//                        taskResult -> LOGGER
-//                                .info("Replace plugin:"
-//                                        + taskResult.getTaskIdentifier()
-//                                                .getPluginKey()));
-
         if (task == null) {
-            LOGGER.info("Replace plugin: task is null");
             return buildContext;
         }
 
