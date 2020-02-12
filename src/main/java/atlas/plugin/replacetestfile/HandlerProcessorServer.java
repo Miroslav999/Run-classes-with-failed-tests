@@ -1,9 +1,9 @@
 package atlas.plugin.replacetestfile;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,19 +58,17 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         Job job = getJob();
         
-        List<String> lastRunningClasses = getLastRunningClasses(job);
+        Set<String> lastRunningClasses = getLastRunningClasses(job);
         
-        List<String> newListRunningClasses = new ArrayList<>(lastRunningClasses);
+        Set<String> newListRunningClasses = new HashSet<>(lastRunningClasses);
         
-        List<String> classesWithFailedTests = getClasses(buildContext
+        Set<String> classesWithFailedTests = getClasses(buildContext
                 .getBuildResult().getFailedTestResults());
 
-        List<String> classesWithSuccessTests = getClasses(buildContext
+        Set<String> classesWithSuccessTests = getClasses(buildContext
                 .getBuildResult().getSuccessfulTestResults());
 
         newListRunningClasses.removeAll(classesWithSuccessTests);
-
-        newListRunningClasses.removeAll(classesWithFailedTests);
 
         newListRunningClasses.addAll(classesWithFailedTests);
 
@@ -88,7 +86,7 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
         return buildContext;
     }
     
-    private List<String> getLastRunningClasses(Job job){
+    private Set<String> getLastRunningClasses(Job job){
         
         if (job.getBuildNumber() != buildContext.getBuildNumber()){
             RuntimeTaskDefinition taskDefinition = getTaskDefinition(buildContext);
@@ -107,7 +105,7 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
             
             job.resetNumberOfRetries();
             
-            List<String> lastRunningClasses = new ArrayList<>();
+            Set<String> lastRunningClasses = new HashSet<>();
             
             lastRunningClasses.addAll(Arrays.asList(classes.split(DELIM)));
             
@@ -152,12 +150,12 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
                         .equals(TASK_KEY)).findFirst().orElse(null);
     }
 
-    private List<String> getClasses(Collection<TestResults> tests) {
-        List<String> classes = new ArrayList<>();
+    private Set<String> getClasses(Collection<TestResults> tests) {
+        Set<String> classes = new HashSet<>();
         tests.stream().forEach(result -> {
-            //String className = getClassName(result.getActualMethodName());
-            String className = result.getActualMethodName();
-            if (classes.indexOf(className) == -1) {
+            String className = getClassName(result.getActualMethodName());
+            //String className = result.getActualMethodName();
+            if (className != null) {
                 classes.add(className);
             }
         });

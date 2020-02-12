@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -19,12 +20,15 @@ import com.atlassian.bamboo.task.TaskResultBuilder;
 import com.atlassian.bamboo.task.TaskType;
 import com.atlassian.util.concurrent.NotNull;
 import com.google.common.io.Files;
+import com.google.gson.Gson;
 
 public class BuildFailedTestListTask implements TaskType {
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(BuildFailedTestListTask.class);
-
+    
+    private static final Gson gson = new Gson();
+    
     @NotNull
     @java.lang.Override
     public TaskResult execute(@NotNull final TaskContext taskContext)
@@ -34,12 +38,9 @@ public class BuildFailedTestListTask implements TaskType {
                 .getConfigurationMap().get(
                         BuildFailedTestListTaskConfigurator.testNameFileKey);
 
-        Job currentJob = (Job) taskContext.getRuntimeTaskData().get(
-                taskContext.getBuildContext().getPlanName());
-
-        if (currentJob == null
-                || currentJob.getBuildNumber() != taskContext.getBuildContext()
-                        .getBuildNumber()) {
+        String jobContent = taskContext.getRuntimeTaskContext().get(taskContext.getBuildContext().getPlanName());
+        
+        if (jobContent == null) {
 
             LOGGER.info("Replace plugin: readFileAndSaveJob_run - new job ");
             
@@ -48,6 +49,8 @@ public class BuildFailedTestListTask implements TaskType {
             return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
 
+        Job currentJob = gson.fromJson(jobContent, Job.class);
+        
         if (currentJob.getResults().size() == 0) {
             return TaskResultBuilder.newBuilder(taskContext).success().build();
         }
@@ -102,7 +105,7 @@ public class BuildFailedTestListTask implements TaskType {
                 .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
 
-    private void writeToFile(String root, String fileName, List<String> list) {
+    private void writeToFile(String root, String fileName, Set<String> list) {
 
         String content = list.stream().collect(
                 Collectors.joining(System.lineSeparator()));
