@@ -72,6 +72,15 @@ public class HandlerProcessorServer implements CustomBuildProcessorServer {
 
         newListRunningClasses.addAll(classesWithFailedTests);
 
+        if(newListRunningClasses.isEmpty()){
+        	
+        	job.addResults(lastRunningClasses);
+
+            LOGGER.info("Replace plugin: newListRunningClasses is empty "
+                    + currentPlanName);
+            return buildContext;
+        }
+        
         job.addResults(newListRunningClasses);
         
         job.increaseNumberOfRetries();
