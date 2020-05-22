@@ -87,7 +87,13 @@ public class BuildFailedTestListTask implements TaskType {
         List<String> currentTestClasses = getTestClassesList(new File(
                 taskContext.getWorkingDirectory().getAbsolutePath() + "/"
                         + fileNameWithDefaultTestClassesList));
-
+        
+        if (currentTestClasses == null || currentTestClasses.isEmpty()){
+        	 LOGGER.info("Replace plugin: readFileAndSaveJob| getPlanName: "
+                     + taskContext.getBuildContext().getPlanName()
+                     + " currentTestClasses is null or empty ");
+        	return;
+        }
 
         String classes = String.join(HandlerProcessorServer.DELIM,
                 currentTestClasses);
